@@ -1,0 +1,21 @@
+freebsd_task:
+  freebsd_instance:
+    image: freebsd-12-1-release-amd64
+    cpu: 4
+    memory: 8GB
+  env:
+    matrix:
+      - PYVER: 2
+      - PYVER: 3
+  install_script:
+    - uname -a
+    - if [ "$PYVER" = "2" ]; then pkg install -y python27 py27-cffi; fi
+    - if [ "$PYVER" = "3" ]; then pkg install -y python37 py37-cffi; fi
+  build_script:
+    - uname -a
+    - if [ "$PYVER" = "2" ]; then python2.7 setup.py build; fi
+    - if [ "$PYVER" = "3" ]; then python3.7 setup.py build; fi
+  test_script:
+    - uname -a
+    - if [ "$PYVER" = "2" ]; then python2.7 setup.py test; fi
+    - if [ "$PYVER" = "3" ]; then python3.7 setup.py test; fi
