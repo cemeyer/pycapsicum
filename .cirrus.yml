@@ -9,13 +9,17 @@ freebsd_task:
       - PYVER: 3
   install_script:
     - uname -a
-    - if [ "$PYVER" = "2" ]; then pkg install -y python27 py27-cffi; fi
-    - if [ "$PYVER" = "3" ]; then pkg install -y python37 py37-cffi; fi
+    - if [ "$PYVER" = "2" ]; then echo "PA=27" >> e; echo "PB=2.7" >> e; echo "PATH=$(pwd):\$PATH" >> e; fi
+    - if [ "$PYVER" = "3" ]; then echo "PA=37" >> e; echo "PB=3.7" >> e; echo "PATH=$(pwd):\$PATH" >> e; fi
+    - ( . e ; echo '#!/bin/sh' > ./coverage; echo "coverage-$PB \"\$@\"" >> ./coverage; chmod +x ./coverage )
+    - ( . e ; pkg install -y python$PA py${PA}-cffi py${PA}-coverage bash )
   build_script:
     - uname -a
-    - if [ "$PYVER" = "2" ]; then python2.7 setup.py build; fi
-    - if [ "$PYVER" = "3" ]; then python3.7 setup.py build; fi
+    - ( . e ; python$PB setup.py build )
   test_script:
     - uname -a
-    - if [ "$PYVER" = "2" ]; then python2.7 setup.py test; fi
-    - if [ "$PYVER" = "3" ]; then python3.7 setup.py test; fi
+    - ( . e ; python$PB setup.py test )
+  coverage_script:
+    - if [ "$PYVER" = "2" ]; then ( . e ; coverage-$PB run -m unittest tests.test_cap ) ; fi
+    - if [ "$PYVER" = "2" ]; then fetch -o u.sh https://codecov.io/bash ; fi
+    - if [ "$PYVER" = "2" ]; then ( . e ; bash u.sh -t "b7185a33-b156-402f-9a1d-b47dfd2f69bd" ) ; fi

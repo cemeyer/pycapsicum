@@ -1,0 +1,5 @@
+[run]
+branch = True
+include = cap/__init__.py
+omit = tests
+parallel = True

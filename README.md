@@ -3,7 +3,8 @@ PyCapsicumCFFI
 
 PyCapsicumCFFI is a Python API wrapper for FreeBSD's Capsicum sandbox.
 
-[![Build Status (cirrus)](https://api.cirrus-ci.com/github/cemeyer/pycapsicumcffi.svg)](https://cirrus-ci.com/github/cemeyer/pycapsicumcffi)
+[![Build Status (cirrus-ci.com)](https://api.cirrus-ci.com/github/cemeyer/pycapsicumcffi.svg)](https://cirrus-ci.com/github/cemeyer/pycapsicumcffi)
+[![Code Coverage (codecov.io)](https://codecov.io/gh/cemeyer/pycapsicumcffi/branch/master/graph/badge.svg)](https://codecov.io/gh/cemeyer/pycapsicumcffi)
 
 The C documentation is a good reference point for understanding how to use Capsicum.
 
