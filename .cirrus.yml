@@ -20,6 +20,10 @@ freebsd_task:
     - uname -a
     - ( . e ; python$PB setup.py test )
   coverage_script:
-    - if [ "$PYVER" = "2" ]; then ( . e ; coverage-$PB run -m unittest tests.test_cap ) ; fi
-    - if [ "$PYVER" = "2" ]; then fetch -o u.sh https://codecov.io/bash ; fi
-    - if [ "$PYVER" = "2" ]; then ( . e ; bash u.sh -t "b7185a33-b156-402f-9a1d-b47dfd2f69bd" ) ; fi
+    # codecov.io seems to get confused if you upload two reports, and we'll get
+    # more coverage under 2.x due to the compat33 module.  So just run coverage
+    # under 2.
+    - if [ "$PYVER" != "2" ]; then exit 0 ; fi
+    - python2.7 covrunner.py
+    - fetch -o u.sh https://codecov.io/bash
+    - bash u.sh -t "b7185a33-b156-402f-9a1d-b47dfd2f69bd"

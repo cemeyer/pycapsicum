@@ -10,6 +10,9 @@ import sys
 import traceback
 
 
+cov_handle = None
+
+
 def _do_nothing(*args):
     pass
 
@@ -98,6 +101,13 @@ def _remote_wrapper(target, args, resultq):
         resultq.put(einfo)
     else:
         resultq.put(None)
+    finally:
+        # Coverage-py needs some help to actually emit data from the forked
+        # process.  Not sure why the atexit handler is not honored.  Perhaps
+        # they are cleared on fork.
+        if cov_handle is not None:
+            cov_handle.stop()
+            cov_handle.save()
 
 
 # Decorator: Run a test in a subprocess, to isolate effects (principally,
