@@ -14,6 +14,7 @@ import tests.util
 import coverage
 
 
+# Convenient object we can hang arbitrary fields off of.
 state = lambda: None
 
 
@@ -27,7 +28,16 @@ def patch_write_file(self, filename):
     import cap
     if cap.sandboxed():
         print("\n ↳ Writing", fname, "in", state.dir_path, "(sandboxed test)")
-    with cap.openat(state.dir_fd, fname, os.O_WRONLY | os.O_CREAT, 0644) as fdata:
+
+    # coverage.py expects a string-mode handle, unfortunately.
+    if sys.version_info < (3, 3):
+        myopen = cap.compat33.open
+    else:
+        myopen = os.open
+
+    rfd = myopen(fname, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644,
+        dir_fd=state.dir_fd)
+    with os.fdopen(rfd, "wt") as fdata:
         self.write_fileobj(fdata)
 
 
@@ -60,14 +70,20 @@ def main():
     unittest.main(module='tests.test_cap', verbosity=3, exit=False)
 
     cov.stop()
+
+    # N.B., intentionally combining results from prior runs (.coverage) so we
+    # can get coverage for py2+py3 test runs.
     cov.combine(strict=True)
+    cov.data_suffix = "py" + "".join([str(x) for x in sys.version_info[:2]])
+    cov.save()
+
+    # Emit already-combined results with no suffix as well, because 'coverage
+    # xml' is too dumb to look for suffixed files.
+    cov.data_suffix = None
     cov.save()
 
     # For Cirrus logs
     cov.report(file=sys.stdout)
-
-    # Emit coverage.xml so covdata doesn't have to grovel for it quite as much.
-    cov.xml_report()
 
 
 if __name__ == "__main__":
