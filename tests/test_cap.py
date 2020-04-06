@@ -29,6 +29,11 @@ class TestPyAPI(unittest.TestCase):
         if sys.version_info >= (3, 2):
             warnings.filterwarnings("ignore", "", ResourceWarning, "", 0)
 
+    # assertCountEqual() is a really stupid name for assertItemsEqual().
+    if sys.version_info >= (3, 0):
+        def assertItemsEqual(self, actual, expected, msg=None):
+            self.assertCountEqual(actual, expected, msg=msg)
+
     @unittest.skipIf(sys.version_info >= (3, 3), "irrelevant for newer Python")
     def test_compat33_names(self):
         cap.compat33.open
@@ -93,6 +98,17 @@ class TestPyAPI(unittest.TestCase):
             os.read(fd, 1)
         self.assertEqual(cm.exception.errno, cap.ENOTCAPABLE)
 
+    def test_limits_ebadf(self):
+        with self.assertRaises(EnvironmentError) as cm:
+            cap.limit(-1, cap.right.NONE)
+        self.assertEqual(cm.exception.errno, errno.EBADF)
+        with self.assertRaises(EnvironmentError) as cm:
+            cap.fcntls_limit(-1, cap.Fcntls([]))
+        self.assertEqual(cm.exception.errno, errno.EBADF)
+        with self.assertRaises(EnvironmentError) as cm:
+            cap.ioctls_limit(-1, cap.Ioctls([]))
+        self.assertEqual(cm.exception.errno, errno.EBADF)
+
     # cap_fcntls_limit, etc.
     def test_fcntl_names(self):
         cap.fcntl.GETFL
@@ -104,6 +120,7 @@ class TestPyAPI(unittest.TestCase):
     def test_fcntls_obj(self):
         cap.Fcntls()
         cap.Fcntls({cap.fcntl.GETFL})
+        cap.Fcntls({cap.fcntl.GETFL})  # test the cache behavior
         cap.Fcntls([cap.fcntl.SETFL, cap.fcntl.SETOWN])
 
     def test_fcntls_negative(self):
@@ -137,7 +154,7 @@ class TestPyAPI(unittest.TestCase):
         cap.Ioctls({termios.TCION})
 
     @util._process_isolate
-    def test_ioctls_limit_trivial(self):
+    def test_ioctls_limit(self):
         fd = os.open("/dev/null", os.O_RDONLY)
 
         cap.enter()
@@ -164,6 +181,16 @@ class TestPyAPI(unittest.TestCase):
             cap.ioctls_limit(fd,
                 cap.Ioctls({termios.FIONREAD, termios.TIOCGETD}))
         self.assertEqual(cm.exception.errno, cap.ENOTCAPABLE)
+
+        self.assertItemsEqual(cap.Ioctls(fd)._ioctls, [termios.FIONREAD])
+
+    def test_ioctls_unlimited(self):
+        fd = os.open("/dev/null", os.O_RDONLY)
+        iocs = cap.Ioctls(fd)
+        self.assertIs(iocs._ioctls, None)
+        copy = cap.Ioctls(iocs)
+        self.assertIs(copy._ioctls, None)
+        cap.ioctls_limit(fd, iocs)
 
     @util._process_isolate
     def test_openat(self):
@@ -196,6 +223,27 @@ class TestPyAPI(unittest.TestCase):
         f = cap.openat(fd, "null", os.O_RDONLY)
         f.readlines()
 
+    def test_openat_write_modes(self):
+        fd = os.open("/tmp", os.O_RDONLY)
+        try:
+            with cap.openat(fd, "test1", os.O_WRONLY | os.O_EXCL | os.O_CREAT, 0o600) as f1:
+                f1.write(b"test")
+        finally:
+            try:
+                os.unlink("/tmp/test1")
+            except:
+                pass
+        try:
+            with cap.openat(fd, "test2", os.O_RDWR | os.O_EXCL | os.O_CREAT, 0o600) as f2:
+                f2.write(b"test")
+                f2.seek(0)
+                f2.read()
+        finally:
+            try:
+                os.unlink("/tmp/test2")
+            except:
+                pass
+
     def test_fromfile(self):
         fd = os.open("/dev/null", os.O_RDONLY)
         fp = open("/dev/null")
@@ -210,6 +258,19 @@ class TestPyAPI(unittest.TestCase):
         self.assertIs(cap.Ioctls(fd)._ioctls, None)
         cap.Ioctls(fp)
 
+    def test_fromfile_ebadf(self):
+        with self.assertRaises(EnvironmentError) as cm:
+            cap.Rights(-1)
+        self.assertEqual(cm.exception.errno, errno.EBADF)
+
+        with self.assertRaises(EnvironmentError) as cm:
+            cap.Fcntls(-1)
+        self.assertEqual(cm.exception.errno, errno.EBADF)
+
+        with self.assertRaises(EnvironmentError) as cm:
+            cap.Ioctls(-1)
+        self.assertEqual(cm.exception.errno, errno.EBADF)
+
     def test_copy_ctors(self):
         cap.Rights(cap.Rights())
         cap.Fcntls(cap.Fcntls())
@@ -221,6 +282,8 @@ class TestCompat33(unittest.TestCase):
     def test_compat33_open(self):
         dfd = os.open(my_dirname, os.O_RDONLY)
         fd = cap.compat33.open(my_filename, os.O_RDONLY, dir_fd=dfd)
+        fd2 = cap.compat33.open(unicode(my_filename), os.O_RDONLY, dir_fd=dfd)
+        fd3 = cap.compat33.open(my_dirname, os.O_RDONLY)
 
     def test_compat33_open_enoent(self):
         dfd = os.open(my_dirname, os.O_RDONLY)
@@ -234,5 +297,7 @@ class TestCompat33(unittest.TestCase):
 
         dfd = os.open(my_dirname, os.O_RDONLY)
         actual = sorted(cap.compat33.listdir(dfd))
-
         self.assertItemsEqual(actual, expected)
+
+        actual2 = sorted(cap.compat33.listdir(my_dirname))
+        self.assertItemsEqual(actual2, expected)
