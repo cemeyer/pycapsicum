@@ -1,7 +1,7 @@
 from setuptools import setup, Extension
 
 setup(name='py-capsicum-cffi',
-    version='2',
+    version='3',
     description="Python interface to Capsicum",
     long_description="""
 PyCapsicumCFFI is a Python API wrapper for FreeBSD's Capsicum sandbox.
