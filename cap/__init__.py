@@ -56,7 +56,7 @@ _ALL = object()
 _rights_cache = {}
 def _rights_cache_get(fset):
     try:
-        return _rights_cache.get(fset)
+        return _rights_cache[fset]
     except KeyError:
         robj = Rights(fset)
         _rights_cache[fset] = robj
@@ -395,14 +395,20 @@ class Fcntls(object):
         })
 
     def __new__(cls, fcntls=None):
+        insert_res = False
         try:
+            if fcntls is None:
+                fcntls = []
             fcntls = frozenset(fcntls)
-            res = _fcntls_cache.get(fcntls, None)
-            if res is not None:
-                return res
+            return _fcntls_cache[fcntls]
+        except KeyError:
+            insert_res = True
         except TypeError:
             pass
-        return super(Fcntls, cls).__new__(cls)
+        obj = super(Fcntls, cls).__new__(cls)
+        if insert_res:
+            _fcntls_cache[fcntls] = obj
+        return obj
 
 
     def __init__(self, fcntls=None):
@@ -524,8 +530,8 @@ class Ioctls:
                 _cffi.errno = errno.EBADF
                 _posixerror()
 
-                ioctls = storage[:rc]
-                # FALLTHROUGH
+            ioctls = storage[0:rc]
+            # FALLTHROUGH
 
         # No realistic way to validate the set of valid ioctls at this
         # layer.
@@ -544,6 +550,8 @@ else:
 
 if sys.version_info < (3, 3):
     class compat33:
+        _olistdir = os.listdir
+
         @staticmethod
         def open(path, flag, mode=0o777, dir_fd=None):
             """
@@ -588,7 +596,7 @@ if sys.version_info < (3, 3):
             entries '.' and '..'.
             """
             if not isinstance(path, (int, long)):
-                return os.listdir(path)
+                return compat33._olistdir(path)
 
             res = []
             fdup = os.dup(path)
