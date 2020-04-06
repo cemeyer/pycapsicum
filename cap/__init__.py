@@ -173,7 +173,7 @@ def enter():
     [1]: https://www.freebsd.org/cgi/man.cgi?query=cap_enter&sektion=2
     """
     rc = _cap.cap_enter()
-    if rc < 0 and _cffi.errno != errno.ENOSYS:
+    if rc < 0 and _cffi.errno != errno.ENOSYS:  # pragma: no cover
         _posixerror()
 
 
@@ -270,7 +270,7 @@ def openat(dfd, path, flags, mode=0):
         smode = "rb"
     elif accmode == os.O_RDWR:
         smode = "r+b"
-    elif accmode == os.O_WRONLY:
+    elif accmode == os.O_WRONLY:  # pragma: no branch
         smode = "wb"
 
     return os.fdopen(fd, smode)
@@ -519,9 +519,9 @@ class Ioctls:
             capacity = rc
             storage = _cffi.new("unsigned long[]", capacity)
             rc = _cap.cap_ioctls_get(fd, storage, capacity)
-            if rc < 0:
+            if rc < 0:  # pragma: no cover
                 _posixerror()
-            if rc == _cap.CAP_IOCTLS_ALL or rc > capacity:
+            if rc == _cap.CAP_IOCTLS_ALL or rc > capacity:  # pragma: no cover
                 # This should not happen; the fd has gone from restricted to
                 # 'capacity' ioctls to unrestricted, or less restricted.  This
                 # can only happen if there is a race condition where the fd is
@@ -574,7 +574,7 @@ if sys.version_info < (3, 3):
 
             while True:
                 fd = _cap.openat(dir_fd, path, flag, _cffi.cast("int", mode))
-                if fd >= 0 or (fd < 0 and _cffi.errno != errno.EINTR):
+                if fd >= 0 or (fd < 0 and _cffi.errno != errno.EINTR):  # pragma: no cover
                     break
 
             if fd < 0:
@@ -600,11 +600,11 @@ if sys.version_info < (3, 3):
 
             res = []
             fdup = os.dup(path)
-            if fdup < 0:
+            if fdup < 0:  # pragma: no cover
                 _posixerror()
 
             dirp = _cap.fdopendir(fdup)
-            if dirp == _cffi.NULL:
+            if dirp == _cffi.NULL:  # pragma: no cover
                 os.close(fdup)
                 _posixerror()
 
@@ -613,17 +613,16 @@ if sys.version_info < (3, 3):
                     _cffi.errno = 0
                     de = _cap.readdir(dirp)
                     if de == _cffi.NULL:
-                        if _cffi.errno != 0:
+                        if _cffi.errno != 0:  # pragma: no cover
                             _posixerror()
                         break
 
                     nam = _cffi.string(de.d_name)
-                    if nam not in {'.', '..'}:
+                    if nam not in {'.', '..'}:  # pragma: no branch
                         res.append(nam)
             finally:
                 rc = _cap.closedir(dirp)
-                if rc < 0 and sys.exc_info()[0] is None:
-                    error = _cffi.errno
-                    raise OSError(error, os.strerror(error))
+                if rc < 0 and sys.exc_info()[0] is None:  # pragma: no cover
+                    _posixerror()
 
             return res
